@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Config {
+  id        String   @id @default("global")
+  unitPrice Float    @default(15)
+  updatedAt DateTime @updatedAt
+}
+
+model House {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  rooms       Room[]
+  extraMeters ExtraMeter[]
+}
+
+model Room {
+  id          String              @id @default(cuid())
+  number      Int
+  name        String              @default("")
+  houseId     String
+  house       House               @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  meterType   String              @default("separate")
+  groupKey    String?             @default("")
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  readings    Reading[]
+
+  @@unique([houseId, number])
+}
+
+model ExtraMeter {
+  id        String              @id @default(cuid())
+  type      String
+  houseId   String
+  house     House               @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  label     String
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  readings  ExtraMeterReading[]
+
+  @@unique([houseId, type])
+}
+
+model Reading {
+  id        String   @id @default(cuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  month     String
+  previous  Float    @default(0)
+  current   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([roomId, month])
+}
+
+model ExtraMeterReading {
+  id        String      @id @default(cuid())
+  meterId   String
+  meter     ExtraMeter  @relation(fields: [meterId], references: [id], onDelete: Cascade)
+  month     String
+  previous  Float       @default(0)
+  current   Float       @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([meterId, month])
+}
