@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { Zap, Users, HelpCircle } from "lucide-react";
 
@@ -38,6 +38,11 @@ export function RoomCard({
   const [prevInput, setPrevInput] = useState(String(previous || ""));
   const [currInput, setCurrInput] = useState(String(current || ""));
 
+  useEffect(() => {
+    setPrevInput(String(previous || ""));
+    setCurrInput(String(current || ""));
+  }, [previous, current]);
+
   const handlePrevChange = (val: string) => {
     setPrevInput(val);
   };
@@ -60,9 +65,9 @@ export function RoomCard({
 
   return (
     <div className={cn(
-      "rounded-xl border p-4 transition-all",
-      hasWarning ? "border-red-500/50 bg-red-500/5" :
-        isMissing ? "border-amber-500/30 bg-amber-500/5" :
+      "rounded-lg border p-4 transition-colors",
+      hasWarning ? "border-red-500/30 bg-red-500/5" :
+        isMissing ? "border-amber-500/20 bg-amber-500/5" :
         "border-border bg-card"
     )}>
       <div className="flex items-start justify-between mb-3">
@@ -72,7 +77,7 @@ export function RoomCard({
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-bold text-foreground">Room {number}</span>
+              <span className="text-sm font-medium text-foreground">Room {number}</span>
               {meterType === "shared" && sharedGroupLabel && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 whitespace-nowrap">
                   {sharedGroupLabel}
@@ -87,12 +92,12 @@ export function RoomCard({
             {name ? (
               <p className="text-xs text-muted-foreground">{name}</p>
             ) : (
-              <p className="text-xs text-muted-foreground italic">No tenant</p>
+              <p className="text-xs text-muted-foreground">No tenant</p>
             )}
           </div>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-lg font-bold text-emerald-400">{formatCurrency(bill)}</p>
+          <p className="text-lg font-semibold text-emerald-400">{formatCurrency(bill)}</p>
           <p className="text-xs text-muted-foreground">{units.toFixed(1)} units</p>
         </div>
       </div>
@@ -100,40 +105,40 @@ export function RoomCard({
       {meterType !== "unmetered" && (
         <div className="grid grid-cols-2 gap-2 mb-2">
           <div>
-            <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Previous</label>
+            <label className="text-xs text-muted-foreground">Previous</label>
             <input
               type="number"
-              step="0.01"
+              
               placeholder="0"
               value={prevInput}
-               onChange={(e) => handlePrevChange(e.target.value)}
-               onBlur={handleBlur}
-               className="w-full mt-1 px-2.5 py-1.5 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+              onChange={(e) => handlePrevChange(e.target.value)}
+              onBlur={handleBlur}
+              className="w-full mt-1 px-2.5 py-1.5 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
           <div>
-            <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Current</label>
+            <label className="text-xs text-muted-foreground">Current</label>
             <input
               type="number"
-              step="0.01"
+              
               placeholder="0"
               value={currInput}
-               onChange={(e) => handleCurrChange(e.target.value)}
-               onBlur={handleBlur}
-               className="w-full mt-1 px-2.5 py-1.5 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+              onChange={(e) => handleCurrChange(e.target.value)}
+              onBlur={handleBlur}
+              className="w-full mt-1 px-2.5 py-1.5 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
         </div>
       )}
 
       {splitWith && splitWith.length > 0 && (
-        <p className="text-[10px] text-violet-400/70 mt-1">
-          Shared with Room {splitWith.join(", ")} — equal split
+        <p className="text-xs text-violet-400/70 mt-1">
+          Shared with Room {splitWith.join(", ")}
         </p>
       )}
 
       {hasWarning && (
-        <p className="text-[10px] text-red-400 mt-1">⚠ Current reading is less than previous</p>
+        <p className="text-xs text-red-400 mt-1">Current reading is less than previous</p>
       )}
     </div>
   );

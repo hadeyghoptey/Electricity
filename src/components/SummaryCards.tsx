@@ -64,16 +64,16 @@ export function SummaryCards({
       {cards.map((card) => {
         const Icon = card.icon;
         return (
-          <div key={card.label} className="rounded-xl border border-border bg-card p-4">
+          <div key={card.label} className="rounded-lg border border-border bg-card p-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <span className="text-xs font-medium text-muted-foreground">
                 {card.label}
               </span>
               <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", card.bg)}>
                 <Icon className={cn("w-4 h-4", card.color)} />
               </div>
             </div>
-            <p className="text-2xl font-bold text-foreground">{card.value}</p>
+            <p className="text-2xl font-semibold text-foreground">{card.value}</p>
             <p className="text-xs text-muted-foreground mt-1">{card.sub}</p>
           </div>
         );

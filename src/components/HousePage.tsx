@@ -8,16 +8,16 @@ import { formatCurrency, formatNumber, getMonthLabel, generateMonths } from "@/l
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useState } from "react";
 
-const HOUSE_META: Record<string, { emoji: string; name: string }> = {
-  primary: { emoji: "🏠", name: "Primary House" },
-  secondary: { emoji: "🏢", name: "Secondary House" },
+const HOUSE_META: Record<string, { name: string }> = {
+  primary: { name: "Primary House" },
+  secondary: { name: "Secondary House" },
 };
 
 export default function HousePage({ slug }: { slug: string }) {
   const { data, loading, error, month, setMonth, updateReading, updateExtraMeter } = useHouseData(slug);
   const [showAllMonths, setShowAllMonths] = useState(false);
 
-  const meta = HOUSE_META[slug] ?? { emoji: "🏠", name: "House" };
+  const meta = HOUSE_META[slug] ?? { name: "House" };
 
   if (loading) {
     return <LoadingSpinner />;
@@ -25,7 +25,7 @@ export default function HousePage({ slug }: { slug: string }) {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-6 text-center">
+      <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-6 text-center">
         <p className="text-red-400 font-medium">Error loading data</p>
         <p className="text-sm text-red-400/70 mt-1">{error}</p>
       </div>
@@ -56,11 +56,10 @@ export default function HousePage({ slug }: { slug: string }) {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      {/* Header */}
+    <div className="space-y-6 max-w-7xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground">{meta.emoji} {meta.name}</h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-foreground tracking-tight">{meta.name}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {data.separate.length + data.shared.reduce((s, g) => s + g.rooms.length, 0) + data.unmetered.length} rooms
             &middot; Rs {data.unitPrice}/unit
@@ -84,7 +83,7 @@ export default function HousePage({ slug }: { slug: string }) {
               {getMonthLabel(month)}
             </button>
             {showAllMonths && (
-              <div className="absolute top-full mt-1 right-0 bg-card border border-border rounded-xl shadow-xl z-10 max-h-48 overflow-y-auto min-w-[160px]">
+              <div className="absolute top-full mt-1 right-0 bg-card border border-border rounded-lg shadow-xl z-10 max-h-48 overflow-y-auto min-w-[160px]">
                 {months.map((m) => (
                   <button
                     key={m}
@@ -110,7 +109,6 @@ export default function HousePage({ slug }: { slug: string }) {
         </div>
       </div>
 
-      {/* Summary */}
       <SummaryCards
         roomTotalBill={data.roomTotalBill}
         extraTotalBill={data.extraTotalBill}
@@ -123,12 +121,11 @@ export default function HousePage({ slug }: { slug: string }) {
         unmeteredCount={data.unmeteredCount}
       />
 
-      {/* Extra Meters */}
-      <div className="rounded-xl border border-border bg-card p-4 md:p-5">
-        <h2 className="text-base md:text-lg font-semibold text-foreground mb-4">📊 Main & Water Meters</h2>
+      <div className="rounded-lg border border-border bg-card p-4 md:p-5">
+        <h2 className="text-base md:text-lg font-semibold text-foreground mb-4">Main & Water Meters</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {data.extraMeters.map((m) => (
-            <div key={m.id} className="bg-muted/30 rounded-lg p-3 md:p-4 border border-border">
+            <div key={m.id} className="bg-muted rounded-lg p-3 md:p-4 border border-border">
               <div className="flex items-center justify-between mb-2 md:mb-3">
                 <span className="text-sm font-medium text-foreground">{m.label}</span>
                 {m.type === "main" ? (
@@ -139,10 +136,10 @@ export default function HousePage({ slug }: { slug: string }) {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Previous</label>
+                  <label className="text-xs text-muted-foreground">Previous</label>
                   <input
                     type="number"
-                    step="0.01"
+                    
                     inputMode="decimal"
                     placeholder="0"
                     defaultValue={m.previous || ""}
@@ -154,10 +151,10 @@ export default function HousePage({ slug }: { slug: string }) {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Current</label>
+                  <label className="text-xs text-muted-foreground">Current</label>
                   <input
                     type="number"
-                    step="0.01"
+                    
                     inputMode="decimal"
                     placeholder="0"
                     defaultValue={m.current || ""}
@@ -173,7 +170,7 @@ export default function HousePage({ slug }: { slug: string }) {
           ))}
         </div>
         {data.mainMeter && (
-          <div className="mt-3 text-xs text-muted-foreground bg-muted/20 rounded-lg p-2 md:p-3">
+          <div className="mt-3 text-xs text-muted-foreground bg-muted rounded-lg p-2 md:p-3">
             Main meter: {formatNumber(data.mainMeter.units)} units = Rs {formatCurrency(data.mainMeter.units * data.unitPrice)}
             &nbsp;&middot; Unmetered: {formatNumber(data.unmeteredUnits)} units split among {data.unmeteredCount} rooms
             = {formatNumber(data.perUnmeteredUnits)} each
@@ -181,10 +178,9 @@ export default function HousePage({ slug }: { slug: string }) {
         )}
       </div>
 
-      {/* Separate Rooms */}
       {data.separate.length > 0 && (
         <div>
-          <h2 className="text-base md:text-lg font-semibold text-foreground mb-3">🏠 Separate Meters</h2>
+          <h2 className="text-base md:text-lg font-semibold text-foreground mb-3">Separate Meters</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
             {data.separate.map((r) => (
               <RoomCard
@@ -203,24 +199,23 @@ export default function HousePage({ slug }: { slug: string }) {
         </div>
       )}
 
-      {/* Shared Groups */}
       {data.shared.length > 0 && (
         <div>
-          <h2 className="text-base md:text-lg font-semibold text-foreground mb-3">🔗 Shared Meters</h2>
+          <h2 className="text-base md:text-lg font-semibold text-foreground mb-3">Shared Meters</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
             {data.shared.map((g) => (
-              <div key={g.groupKey} className="rounded-xl border border-violet-500/20 bg-card p-4">
+              <div key={g.groupKey} className="rounded-lg border border-violet-500/10 bg-card p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-semibold text-foreground">{g.label}</span>
+                  <span className="text-sm font-medium text-foreground">{g.label}</span>
                   <span className="text-xs text-muted-foreground">{formatNumber(g.totalUnits)} total units</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   <div>
-                    <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Previous</label>
+                    <label className="text-xs text-muted-foreground">Previous</label>
                     <input
                       type="number"
-                      step="0.01"
+                      
                       inputMode="decimal"
                       placeholder="0"
                       defaultValue={g.previous || ""}
@@ -232,10 +227,10 @@ export default function HousePage({ slug }: { slug: string }) {
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Current</label>
+                    <label className="text-xs text-muted-foreground">Current</label>
                     <input
                       type="number"
-                      step="0.01"
+                      
                       inputMode="decimal"
                       placeholder="0"
                       defaultValue={g.current || ""}
@@ -265,13 +260,12 @@ export default function HousePage({ slug }: { slug: string }) {
         </div>
       )}
 
-      {/* Unmetered */}
       {data.unmetered.length > 0 && (
         <div>
-          <h2 className="text-base md:text-lg font-semibold text-foreground mb-3">❓ Unmetered Rooms</h2>
-          <div className="rounded-xl border border-orange-500/20 bg-card p-3 md:p-4 mb-3">
+          <h2 className="text-base md:text-lg font-semibold text-foreground mb-3">Unmetered Rooms</h2>
+          <div className="rounded-lg border border-orange-500/10 bg-card p-3 md:p-4 mb-3">
             <p className="text-xs text-muted-foreground">
-              Main meter ({formatNumber(data.mainMeter?.units ?? 0)} units) − metered rooms ({formatNumber(data.totalMeteredUnits)} units)
+              Main meter ({formatNumber(data.mainMeter?.units ?? 0)} units) &minus; metered rooms ({formatNumber(data.totalMeteredUnits)} units)
               = {formatNumber(data.unmeteredUnits)} units &divide; {data.unmeteredCount} rooms
               = {formatNumber(data.perUnmeteredUnits)} units each
             </p>

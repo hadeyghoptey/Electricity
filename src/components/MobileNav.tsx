@@ -16,14 +16,14 @@ const items = [
   { href: "/primary", label: "Primary", icon: Home },
   { href: "/secondary", label: "Secondary", icon: Building2 },
   { href: "/reports", label: "Reports", icon: FileText },
-  { href: "/admin", label: "Admin", icon: Settings },
+  { href: "/admin", label: "Settings", icon: Settings },
 ];
 
 export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-lg safe-area-bottom">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background safe-area-bottom">
       <div className="flex items-center justify-around h-14">
         {items.map((item) => {
           const isActive = pathname === item.href;

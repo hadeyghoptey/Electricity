@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { cn, formatCurrency, formatNumber, getCurrentMonth, getMonthLabel, generateMonths } from "./utils";
+import { cn, formatCurrency, formatNumber, getCurrentMonth, getMonthLabel, generateMonths, computeMonthlyUsage } from "./utils";
+import type { HouseRawData } from "./calculations";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -227,5 +228,166 @@ describe("generateMonths", () => {
     expect(months).toHaveLength(24);
     expect(months[0]).toBe("2024-08");
     expect(months[23]).toBe("2026-07");
+  });
+});
+
+describe("computeMonthlyUsage", () => {
+  function makeHouse(overrides: Partial<HouseRawData> = {}): HouseRawData {
+    return {
+      houseId: "h1",
+      houseName: "Test",
+      unitPrice: 15,
+      rooms: [],
+      extraMeters: [],
+      ...overrides,
+    };
+  }
+
+  it("returns empty array for empty house", () => {
+    const data = makeHouse();
+    expect(computeMonthlyUsage(data)).toEqual([]);
+  });
+
+  it("aggregates single room across multiple months", () => {
+    const data = makeHouse({
+      rooms: [
+        {
+          id: "r1", number: 1, name: "", meterType: "separate", groupKey: null,
+          readings: [
+            { month: "2026-06", previous: 100, current: 150 },
+            { month: "2026-07", previous: 150, current: 200 },
+          ],
+        },
+      ],
+    });
+    const result = computeMonthlyUsage(data);
+    expect(result).toHaveLength(2);
+    expect(result[0].month).toBe("2026-06");
+    expect(result[0].totalUnits).toBe(50);
+    expect(result[1].month).toBe("2026-07");
+    expect(result[1].totalUnits).toBe(50);
+  });
+
+  it("aggregates multiple rooms in same month", () => {
+    const data = makeHouse({
+      rooms: [
+        {
+          id: "r1", number: 1, name: "", meterType: "separate", groupKey: null,
+          readings: [{ month: "2026-06", previous: 100, current: 150 }],
+        },
+        {
+          id: "r2", number: 2, name: "", meterType: "separate", groupKey: null,
+          readings: [{ month: "2026-06", previous: 200, current: 300 }],
+        },
+      ],
+    });
+    const result = computeMonthlyUsage(data);
+    expect(result).toHaveLength(1);
+    expect(result[0].totalUnits).toBe(150); // 50 + 100
+  });
+
+  it("includes extraMeter main units", () => {
+    const data = makeHouse({
+      rooms: [
+        {
+          id: "r1", number: 1, name: "", meterType: "separate", groupKey: null,
+          readings: [{ month: "2026-06", previous: 0, current: 100 }],
+        },
+      ],
+      extraMeters: [
+        { id: "m1", type: "main", label: "Main", readings: [{ month: "2026-06", previous: 0, current: 500 }] },
+      ],
+    });
+    const result = computeMonthlyUsage(data);
+    expect(result).toHaveLength(1);
+    expect(result[0].totalUnits).toBe(100);
+    expect(result[0].mainUnits).toBe(500);
+  });
+
+  it("ignores non-main extra meters for mainUnits", () => {
+    const data = makeHouse({
+      extraMeters: [
+        { id: "m1", type: "main", label: "Main", readings: [{ month: "2026-06", previous: 0, current: 500 }] },
+        { id: "m2", type: "khanepani", label: "Water", readings: [{ month: "2026-06", previous: 0, current: 50 }] },
+      ],
+    });
+    const result = computeMonthlyUsage(data);
+    expect(result).toHaveLength(1);
+    expect(result[0].mainUnits).toBe(500);
+    expect(result[0].totalUnits).toBe(0);
+  });
+
+  it("returns sorted months in ascending order", () => {
+    const data = makeHouse({
+      rooms: [
+        {
+          id: "r1", number: 1, name: "", meterType: "separate", groupKey: null,
+          readings: [
+            { month: "2026-03", previous: 0, current: 50 },
+            { month: "2026-01", previous: 0, current: 30 },
+            { month: "2026-02", previous: 0, current: 40 },
+          ],
+        },
+      ],
+    });
+    const result = computeMonthlyUsage(data);
+    expect(result.map((r) => r.month)).toEqual(["2026-01", "2026-02", "2026-03"]);
+    expect(result[2].totalUnits).toBe(50);
+  });
+
+  it("clamps negative units to zero", () => {
+    const data = makeHouse({
+      rooms: [
+        {
+          id: "r1", number: 1, name: "", meterType: "separate", groupKey: null,
+          readings: [{ month: "2026-06", previous: 200, current: 100 }],
+        },
+      ],
+    });
+    const result = computeMonthlyUsage(data);
+    expect(result[0].totalUnits).toBe(0);
+  });
+
+  it("includes extra meter months even without room readings", () => {
+    const data = makeHouse({
+      extraMeters: [
+        { id: "m1", type: "main", label: "Main", readings: [{ month: "2026-06", previous: 0, current: 300 }] },
+      ],
+    });
+    const result = computeMonthlyUsage(data);
+    expect(result).toHaveLength(1);
+    expect(result[0].mainUnits).toBe(300);
+    expect(result[0].totalUnits).toBe(0);
+  });
+
+  it("includes label in output", () => {
+    const data = makeHouse({
+      rooms: [
+        {
+          id: "r1", number: 1, name: "", meterType: "separate", groupKey: null,
+          readings: [{ month: "2026-06", previous: 0, current: 50 }],
+        },
+      ],
+    });
+    const result = computeMonthlyUsage(data);
+    expect(result[0].label).toBe("June 2026");
+  });
+
+  it("handles shared and unmetered readings as normal (all counted)", () => {
+    const data = makeHouse({
+      rooms: [
+        {
+          id: "r1", number: 1, name: "", meterType: "shared", groupKey: "g1",
+          readings: [{ month: "2026-06", previous: 100, current: 200 }],
+        },
+        {
+          id: "r2", number: 2, name: "", meterType: "unmetered", groupKey: null,
+          readings: [],
+        },
+      ],
+    });
+    const result = computeMonthlyUsage(data);
+    expect(result).toHaveLength(1);
+    expect(result[0].totalUnits).toBe(100);
   });
 });

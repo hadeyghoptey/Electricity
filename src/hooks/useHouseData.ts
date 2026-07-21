@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getCurrentMonth, mapHouseRawData } from "@/lib/utils";
 import type { HouseRawData, HouseCalcResult } from "@/lib/calculations";
 import { calculateHouse } from "@/lib/calculations";
@@ -23,12 +23,16 @@ export function useHouseData(slug: string): UseHouseDataReturn {
   const [error, setError] = useState<string | null>(null);
   const [month, setMonth] = useState(getCurrentMonth());
   const [refreshKey, setRefreshKey] = useState(0);
+  const isFirstLoad = useRef(true);
 
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    if (isFirstLoad.current) {
+      setLoading(true);
+      isFirstLoad.current = false;
+    }
     setError(null);
     Promise.all([
       fetch(apiUrl(`/api/houses/${slug}`)).then(async (r) => {
@@ -65,9 +69,25 @@ export function useHouseData(slug: string): UseHouseDataReturn {
         body: JSON.stringify({ roomId, month, previous: prev, current: curr }),
       });
       if (!res.ok) throw new Error("Failed to save reading");
-      refresh();
+      setRaw((prevRaw) => {
+        if (!prevRaw) return prevRaw;
+        return {
+          ...prevRaw,
+          rooms: prevRaw.rooms.map((r) =>
+            r.id === roomId
+              ? {
+                  ...r,
+                  readings: [
+                    ...r.readings.filter((rd) => rd.month !== month),
+                    { month, previous: prev, current: curr },
+                  ],
+                }
+              : r
+          ),
+        };
+      });
     },
-    [month, refresh]
+    [month]
   );
 
   const updateExtraMeter = useCallback(
@@ -78,9 +98,25 @@ export function useHouseData(slug: string): UseHouseDataReturn {
         body: JSON.stringify({ meterId, month, previous: prev, current: curr }),
       });
       if (!res.ok) throw new Error("Failed to save meter reading");
-      refresh();
+      setRaw((prevRaw) => {
+        if (!prevRaw) return prevRaw;
+        return {
+          ...prevRaw,
+          extraMeters: prevRaw.extraMeters.map((m) =>
+            m.id === meterId
+              ? {
+                  ...m,
+                  readings: [
+                    ...m.readings.filter((rd) => rd.month !== month),
+                    { month, previous: prev, current: curr },
+                  ],
+                }
+              : m
+          ),
+        };
+      });
     },
-    [month, refresh]
+    [month]
   );
 
   const updateRoom = useCallback(

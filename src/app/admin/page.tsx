@@ -11,20 +11,31 @@ export default function AdminPage() {
   const [houses, setHouses] = useState<AdminHouseData[]>([]);
   const [unitPrice, setUnitPrice] = useState(15);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savingRoomId, setSavingRoomId] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    setError(null);
     Promise.all([
-      fetch(apiUrl("/api/houses/primary")).then((r) => r.json()),
-      fetch(apiUrl("/api/houses/secondary")).then((r) => r.json()),
-      fetch(apiUrl("/api/config")).then((r) => r.json()),
-    ]).then(([pHouse, sHouse, config]) => {
-      setHouses([mapAdminHouseData(pHouse), mapAdminHouseData(sHouse)]);
-      setUnitPrice(config.unitPrice ?? 15);
-      setLoading(false);
-    });
+      fetch(apiUrl("/api/houses/primary")).then(async (r) => { if (!r.ok) throw new Error("Failed to load Primary House"); return r.json(); }),
+      fetch(apiUrl("/api/houses/secondary")).then(async (r) => { if (!r.ok) throw new Error("Failed to load Secondary House"); return r.json(); }),
+      fetch(apiUrl("/api/config")).then(async (r) => { if (!r.ok) throw new Error("Failed to load config"); return r.json(); }),
+    ])
+      .then(([pHouse, sHouse, config]) => {
+        if (cancelled) return;
+        setHouses([mapAdminHouseData(pHouse), mapAdminHouseData(sHouse)]);
+        setUnitPrice(config.unitPrice ?? 15);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const handleNameChange = (roomId: string, name: string) => {
@@ -112,12 +123,21 @@ export default function AdminPage() {
     return <LoadingSpinner />;
   }
 
+  if (error) {
+    return (
+      <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-6 text-center">
+        <p className="text-red-400 font-medium">Error loading settings</p>
+        <p className="text-sm text-red-400/70 mt-1">{error}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">⚙️ Admin</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage settings, rooms, and tenants</p>
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight">Settings</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage rooms, tenants, and configuration</p>
         </div>
         <button
           onClick={saveAll}
@@ -133,9 +153,8 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* Unit Price */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h2 className="text-sm font-semibold text-foreground mb-3">💰 Electricity Price</h2>
+      <div className="rounded-lg border border-border bg-card p-5">
+        <h2 className="text-sm font-semibold text-foreground mb-3">Electricity Price</h2>
         <div className="flex items-center gap-4">
           <div>
             <label className="text-xs text-muted-foreground block mb-1">Price per unit (Rs)</label>
@@ -144,18 +163,17 @@ export default function AdminPage() {
               step="0.5"
               value={unitPrice}
               onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
-              className="w-28 px-3 py-2 rounded-lg bg-muted border border-border text-lg font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-28 px-3 py-2 rounded-lg bg-muted border border-border text-lg font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
           <div className="text-sm text-muted-foreground">
-            Current rate: <span className="text-foreground font-medium">{formatCurrency(1)}</span> per unit
+            Current rate: <span className="text-foreground font-medium">{formatCurrency(unitPrice)}</span> per unit
           </div>
         </div>
       </div>
 
-      {/* Room Lists */}
       {houses.map((house) => (
-        <div key={house.id} className="rounded-xl border border-border bg-card p-5">
+        <div key={house.id} className="rounded-lg border border-border bg-card p-5">
           <h2 className="text-lg font-semibold text-foreground mb-4">
             {house.name} <span className="text-sm font-normal text-muted-foreground">({house.rooms.length} rooms)</span>
           </h2>
@@ -164,10 +182,10 @@ export default function AdminPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-2 px-2 text-muted-foreground font-medium text-xs uppercase tracking-wider">Room</th>
-                  <th className="text-left py-2 px-2 text-muted-foreground font-medium text-xs uppercase tracking-wider">Tenant Name</th>
-                  <th className="text-left py-2 px-2 text-muted-foreground font-medium text-xs uppercase tracking-wider">Meter Type</th>
-                  <th className="text-right py-2 px-2 text-muted-foreground font-medium text-xs uppercase tracking-wider">Actions</th>
+                  <th className="text-left py-2 px-2 text-muted-foreground font-medium text-xs">Room</th>
+                  <th className="text-left py-2 px-2 text-muted-foreground font-medium text-xs">Tenant Name</th>
+                  <th className="text-left py-2 px-2 text-muted-foreground font-medium text-xs">Meter Type</th>
+                  <th className="text-right py-2 px-2 text-muted-foreground font-medium text-xs">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -211,8 +229,8 @@ export default function AdminPage() {
         </div>
       ))}
 
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h2 className="text-sm font-semibold text-foreground mb-3">🔄 Reset Data</h2>
+      <div className="rounded-lg border border-border bg-card p-5">
+        <h2 className="text-sm font-semibold text-foreground mb-3">Reset Data</h2>
         <p className="text-xs text-muted-foreground mb-3">
           This will clear all meter readings for all rooms. Room configurations and tenant names will be preserved.
         </p>

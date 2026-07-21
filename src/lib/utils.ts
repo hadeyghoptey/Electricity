@@ -67,6 +67,47 @@ export function mapHouseRawData(
   };
 }
 
+export interface MonthlyDataPoint {
+  month: string;
+  label: string;
+  totalUnits: number;
+  mainUnits: number;
+}
+
+export function computeMonthlyUsage(data: HouseRawData): MonthlyDataPoint[] {
+  const monthMap = new Map<string, { roomUnits: number; mainUnits: number }>();
+
+  for (const room of data.rooms) {
+    for (const r of room.readings) {
+      if (!monthMap.has(r.month)) {
+        monthMap.set(r.month, { roomUnits: 0, mainUnits: 0 });
+      }
+      const units = Math.max(0, r.current - r.previous);
+      monthMap.get(r.month)!.roomUnits += units;
+    }
+  }
+
+  for (const meter of data.extraMeters) {
+    if (meter.type !== "main") continue;
+    for (const r of meter.readings) {
+      if (!monthMap.has(r.month)) {
+        monthMap.set(r.month, { roomUnits: 0, mainUnits: 0 });
+      }
+      const units = Math.max(0, r.current - r.previous);
+      monthMap.get(r.month)!.mainUnits = units;
+    }
+  }
+
+  return Array.from(monthMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, d]) => ({
+      month,
+      label: getMonthLabel(month),
+      totalUnits: d.roomUnits,
+      mainUnits: d.mainUnits,
+    }));
+}
+
 export interface AdminHouseData {
   id: string;
   name: string;

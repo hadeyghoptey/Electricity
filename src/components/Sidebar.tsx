@@ -17,7 +17,7 @@ const navItems = [
   { href: "/primary", label: "Primary House", icon: Home },
   { href: "/secondary", label: "Secondary House", icon: Building2 },
   { href: "/reports", label: "Reports", icon: FileText },
-  { href: "/admin", label: "Admin", icon: Settings },
+  { href: "/admin", label: "Settings", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -27,11 +27,11 @@ export function Sidebar() {
     <aside className="hidden md:flex md:flex-col w-64 border-r border-border bg-card shrink-0">
       <div className="p-5 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/20">
-            <Zap className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Zap className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-foreground">Electricity</h1>
+            <p className="text-sm font-semibold text-foreground">Electricity</p>
             <p className="text-[11px] text-muted-foreground -mt-0.5">Bill Manager</p>
           </div>
         </div>
@@ -46,17 +46,14 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150",
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
                 isActive
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
               )}
             >
               <Icon className={cn("w-4 h-4", isActive && "text-primary")} />
               {item.label}
-              {isActive && (
-                <div className="ml-auto w-1 h-4 rounded-full bg-primary" />
-              )}
             </Link>
           );
         })}
@@ -64,9 +61,8 @@ export function Sidebar() {
 
       <div className="p-4 border-t border-border">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <div className="w-2 h-2 rounded-full bg-emerald-500" />
-          <span>System Active</span>
-          <span className="ml-auto">v1.0</span>
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/70" />
+          <span>v1.0</span>
         </div>
       </div>
     </aside>
