@@ -1,15 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { roomUpdateSchema } from "@/lib/validations";
 
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    const { roomId, name, meterType } = body;
-
-    if (!roomId) {
-      return NextResponse.json({ error: "roomId is required" }, { status: 400 });
+    const parsed = roomUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
     }
 
+    const { roomId, name, meterType } = parsed.data;
     const data: Record<string, string> = {};
     if (name !== undefined) data.name = name;
     if (meterType !== undefined) data.meterType = meterType;

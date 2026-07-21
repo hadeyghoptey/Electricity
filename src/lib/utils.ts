@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { HouseRawData } from "@/lib/calculations";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -35,4 +36,65 @@ export function generateMonths(count = 12): string[] {
     months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
   }
   return months;
+}
+
+export function mapHouseRawData(
+  house: Record<string, unknown>,
+  config: { unitPrice: number }
+): HouseRawData {
+  return {
+    houseId: house.id as string,
+    houseName: house.name as string,
+    unitPrice: config.unitPrice,
+    rooms: ((house.rooms ?? []) as Array<Record<string, unknown>>).map(
+      (r: Record<string, unknown>) => ({
+        id: r.id as string,
+        number: r.number as number,
+        name: r.name as string,
+        meterType: r.meterType as string,
+        groupKey: (r.groupKey as string) || null,
+        readings: (r.readings as Array<{ month: string; previous: number; current: number }>) ?? [],
+      })
+    ),
+    extraMeters: ((house.extraMeters ?? []) as Array<Record<string, unknown>>).map(
+      (m: Record<string, unknown>) => ({
+        id: m.id as string,
+        type: m.type as string,
+        label: m.label as string,
+        readings: (m.readings as Array<{ month: string; previous: number; current: number }>) ?? [],
+      })
+    ),
+  };
+}
+
+export interface AdminHouseData {
+  id: string;
+  name: string;
+  slug: string;
+  rooms: AdminRoomData[];
+}
+
+export interface AdminRoomData {
+  id: string;
+  number: number;
+  name: string;
+  meterType: string;
+  houseSlug: string;
+}
+
+export function mapAdminHouseData(h: Record<string, unknown>): AdminHouseData {
+  return {
+    id: h.id as string,
+    name: h.name as string,
+    slug: h.slug as string,
+    rooms: ((h.rooms ?? []) as Array<Record<string, unknown>>).map(
+      (r: Record<string, unknown>) => ({
+        id: r.id as string,
+        number: r.number as number,
+        name: (r.name as string) ?? "",
+        meterType: (r.meterType as string) ?? "separate",
+        houseSlug: h.slug as string,
+      })
+    ),
+  };
 }

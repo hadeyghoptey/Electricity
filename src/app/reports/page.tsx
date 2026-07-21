@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { calculateHouse, type HouseRawData, type HouseCalcResult } from "@/lib/calculations";
-import { formatCurrency, formatNumber, getCurrentMonth, getMonthLabel, generateMonths } from "@/lib/utils";
+import { formatCurrency, formatNumber, getCurrentMonth, getMonthLabel, generateMonths, mapHouseRawData } from "@/lib/utils";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { apiUrl } from "@/lib/api";
 import { Download, FileText, Printer } from "lucide-react";
 
 export default function ReportsPage() {
@@ -15,46 +17,19 @@ export default function ReportsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/houses/primary").then((r) => r.json()),
-      fetch("/api/houses/secondary").then((r) => r.json()),
-      fetch("/api/config").then((r) => r.json()),
+      fetch(apiUrl("/api/houses/primary")).then((r) => r.json()),
+      fetch(apiUrl("/api/houses/secondary")).then((r) => r.json()),
+      fetch(apiUrl("/api/config")).then((r) => r.json()),
     ])
       .then(([pHouse, sHouse, config]) => {
-        const mapData = (h: Record<string, unknown>): HouseRawData => ({
-          houseId: h.id as string,
-          houseName: h.name as string,
-          unitPrice: config.unitPrice as number,
-          rooms: ((h.rooms ?? []) as Array<Record<string, unknown>>).map(
-            (r: Record<string, unknown>) => ({
-              id: r.id as string,
-              number: r.number as number,
-              name: r.name as string,
-              meterType: r.meterType as string,
-              groupKey: (r.groupKey as string) || null,
-              readings: (r.readings as Array<{ month: string; previous: number; current: number }>) ?? [],
-            })
-          ),
-          extraMeters: ((h.extraMeters ?? []) as Array<Record<string, unknown>>).map(
-            (m: Record<string, unknown>) => ({
-              id: m.id as string,
-              type: m.type as string,
-              label: m.label as string,
-              readings: (m.readings as Array<{ month: string; previous: number; current: number }>) ?? [],
-            })
-          ),
-        });
-        setPrimary(mapData(pHouse));
-        setSecondary(mapData(sHouse));
+        setPrimary(mapHouseRawData(pHouse, { unitPrice: config.unitPrice as number }));
+        setSecondary(mapHouseRawData(sHouse, { unitPrice: config.unitPrice as number }));
       })
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   const pCalc = primary ? calculateHouse(primary, selectedMonth) : null;

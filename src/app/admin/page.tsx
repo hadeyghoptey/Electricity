@@ -2,57 +2,32 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "@/components/ui/Toaster";
-import { formatCurrency } from "@/lib/utils";
-import { Save, RotateCcw } from "lucide-react";
-
-interface RoomEdit {
-  id: string;
-  number: number;
-  name: string;
-  meterType: string;
-  houseSlug: string;
-}
-
-interface HouseData {
-  id: string;
-  name: string;
-  slug: string;
-  rooms: RoomEdit[];
-}
+import { formatCurrency, mapAdminHouseData, type AdminHouseData } from "@/lib/utils";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { apiUrl } from "@/lib/api";
+import { Save, RotateCcw, Trash2 } from "lucide-react";
 
 export default function AdminPage() {
-  const [houses, setHouses] = useState<HouseData[]>([]);
+  const [houses, setHouses] = useState<AdminHouseData[]>([]);
   const [unitPrice, setUnitPrice] = useState(15);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingRoomId, setSavingRoomId] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/houses/primary").then((r) => r.json()),
-      fetch("/api/houses/secondary").then((r) => r.json()),
-      fetch("/api/config").then((r) => r.json()),
+      fetch(apiUrl("/api/houses/primary")).then((r) => r.json()),
+      fetch(apiUrl("/api/houses/secondary")).then((r) => r.json()),
+      fetch(apiUrl("/api/config")).then((r) => r.json()),
     ]).then(([pHouse, sHouse, config]) => {
-      const mapHouse = (h: Record<string, unknown>): HouseData => ({
-        id: h.id as string,
-        name: h.name as string,
-        slug: h.slug as string,
-        rooms: ((h.rooms ?? []) as Array<Record<string, unknown>>).map(
-          (r: Record<string, unknown>) => ({
-            id: r.id as string,
-            number: r.number as number,
-            name: (r.name as string) ?? "",
-            meterType: (r.meterType as string) ?? "separate",
-            houseSlug: h.slug as string,
-          })
-        ),
-      });
-      setHouses([mapHouse(pHouse), mapHouse(sHouse)]);
+      setHouses([mapAdminHouseData(pHouse), mapAdminHouseData(sHouse)]);
       setUnitPrice(config.unitPrice ?? 15);
       setLoading(false);
     });
   }, []);
 
-  const handleNameChange = async (roomId: string, name: string) => {
+  const handleNameChange = (roomId: string, name: string) => {
     setHouses((prev) =>
       prev.map((h) => ({
         ...h,
@@ -61,7 +36,7 @@ export default function AdminPage() {
     );
   };
 
-  const handleTypeChange = async (roomId: string, meterType: string) => {
+  const handleTypeChange = (roomId: string, meterType: string) => {
     setHouses((prev) =>
       prev.map((h) => ({
         ...h,
@@ -73,32 +48,44 @@ export default function AdminPage() {
   const saveRoom = async (roomId: string) => {
     const room = houses.flatMap((h) => h.rooms).find((r) => r.id === roomId);
     if (!room) return;
-    await fetch("/api/rooms", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomId, name: room.name, meterType: room.meterType }),
-    });
+    setSavingRoomId(roomId);
+    try {
+      const res = await fetch(apiUrl("/api/rooms"), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId, name: room.name, meterType: room.meterType }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      toast(`Room ${room.number} saved`, "success");
+    } catch {
+      toast(`Failed to save Room ${room.number}`, "error");
+    } finally {
+      setSavingRoomId(null);
+    }
   };
 
   const saveAll = async () => {
     setSaving(true);
     try {
-      await fetch("/api/config", {
+      const configRes = await fetch(apiUrl("/api/config"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ unitPrice }),
       });
+      if (!configRes.ok) throw new Error("Failed to save config");
 
-      for (const house of houses) {
-        for (const room of house.rooms) {
-          await fetch("/api/rooms", {
+      const promises = houses.flatMap((house) =>
+        house.rooms.map((room) =>
+           fetch(apiUrl("/api/rooms"), {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ roomId: room.id, name: room.name, meterType: room.meterType }),
-          });
-        }
-      }
-
+          }).then((r) => {
+            if (!r.ok) throw new Error(`Failed to save Room ${room.number}`);
+          })
+        )
+      );
+      await Promise.all(promises);
       toast("All settings saved!", "success");
     } catch {
       toast("Failed to save settings", "error");
@@ -107,12 +94,22 @@ export default function AdminPage() {
     }
   };
 
+  const resetReadings = async () => {
+    if (!confirm("Are you sure? This will delete all meter readings for all rooms and meters.")) return;
+    setResetting(true);
+    try {
+      const res = await fetch(apiUrl("/api/readings"), { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to reset readings");
+      toast("All readings have been reset", "success");
+    } catch {
+      toast("Failed to reset readings", "error");
+    } finally {
+      setResetting(false);
+    }
+  };
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
@@ -200,9 +197,10 @@ export default function AdminPage() {
                     <td className="py-2.5 px-2 text-right">
                       <button
                         onClick={() => saveRoom(room.id)}
-                        className="text-xs text-primary hover:text-primary/80 transition-colors"
+                        disabled={savingRoomId === room.id}
+                        className="text-xs text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
                       >
-                        Save
+                        {savingRoomId === room.id ? "..." : "Save"}
                       </button>
                     </td>
                   </tr>
@@ -219,13 +217,15 @@ export default function AdminPage() {
           This will clear all meter readings for all rooms. Room configurations and tenant names will be preserved.
         </p>
         <button
-          onClick={async () => {
-            if (confirm("Are you sure? This will delete all meter readings.")) {
-              toast("Reset feature: run `prisma migrate reset --force` in terminal", "info");
-            }
-          }}
-          className="px-4 py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 text-sm font-medium hover:bg-red-500/20 transition-colors"
+          onClick={resetReadings}
+          disabled={resetting}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 text-sm font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50"
         >
+          {resetting ? (
+            <RotateCcw className="w-4 h-4 animate-spin" />
+          ) : (
+            <Trash2 className="w-4 h-4" />
+          )}
           Reset All Readings
         </button>
       </div>

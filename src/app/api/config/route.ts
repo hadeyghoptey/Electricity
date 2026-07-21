@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { configUpdateSchema } from "@/lib/validations";
 
 export async function GET() {
   const config = await prisma.config.findUnique({ where: { id: "global" } });
@@ -9,14 +10,18 @@ export async function GET() {
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    const unitPrice = parseFloat(body.unitPrice);
-    if (isNaN(unitPrice) || unitPrice <= 0) {
-      return NextResponse.json({ error: "Invalid unit price" }, { status: 400 });
+    const parsed = configUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
     }
+
     const config = await prisma.config.upsert({
       where: { id: "global" },
-      update: { unitPrice },
-      create: { id: "global", unitPrice },
+      update: { unitPrice: parsed.data.unitPrice },
+      create: { id: "global", unitPrice: parsed.data.unitPrice },
     });
     return NextResponse.json(config);
   } catch {

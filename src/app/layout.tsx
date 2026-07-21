@@ -12,12 +12,7 @@ export const metadata: Metadata = {
   description: "Manage electricity bills for multiple properties",
 };
 
-export const viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-};
+export const viewport = { width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

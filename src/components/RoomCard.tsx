@@ -40,12 +40,14 @@ export function RoomCard({
 
   const handlePrevChange = (val: string) => {
     setPrevInput(val);
-    onReadingChange(parseFloat(val) || 0, parseFloat(currInput) || 0);
   };
 
   const handleCurrChange = (val: string) => {
     setCurrInput(val);
-    onReadingChange(parseFloat(prevInput) || 0, parseFloat(val) || 0);
+  };
+
+  const handleBlur = () => {
+    onReadingChange(parseFloat(prevInput) || 0, parseFloat(currInput) || 0);
   };
 
   const curr = parseFloat(currInput) || 0;
@@ -104,8 +106,9 @@ export function RoomCard({
               step="0.01"
               placeholder="0"
               value={prevInput}
-              onChange={(e) => handlePrevChange(e.target.value)}
-              className="w-full mt-1 px-2.5 py-1.5 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+               onChange={(e) => handlePrevChange(e.target.value)}
+               onBlur={handleBlur}
+               className="w-full mt-1 px-2.5 py-1.5 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
           <div>
@@ -115,8 +118,9 @@ export function RoomCard({
               step="0.01"
               placeholder="0"
               value={currInput}
-              onChange={(e) => handleCurrChange(e.target.value)}
-              className="w-full mt-1 px-2.5 py-1.5 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
+               onChange={(e) => handleCurrChange(e.target.value)}
+               onBlur={handleBlur}
+               className="w-full mt-1 px-2.5 py-1.5 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
         </div>
